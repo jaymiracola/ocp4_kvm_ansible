@@ -29,7 +29,7 @@
   register: availableversion
 
 - name: Fetching RHCOS kernel file name
-  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep "kernel"  | sed 's/.*href="//' | sed 's/".*//'
+  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep "kernel"  | sed 's/.*href="//' | sed 's/".*//' |head -n1
   register: kernel
 
 - name: Downloading RHCOS kernel
@@ -38,7 +38,7 @@
     dest: "/var/www/html/downloads/{{ minorversion }}/rhcos/vmlinuz"
 
 - name: Fetching RHCOS initramfs file name
-  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep "initramfs"  | sed 's/.*href="//' | sed 's/".*//'
+  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep "initramfs"  | sed 's/.*href="//' | sed 's/".*//'|head -n1
   register: initramfs
 
 - name: Downloading RHCOS initramfs
@@ -46,8 +46,17 @@
     url: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/{{ initramfs.stdout }}"
     dest: "/var/www/html/downloads/{{ minorversion }}/rhcos/initramfs.img"
 
+- name: Fetching RHCOS live-rootfs file name
+  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep "live-rootfs"  | sed 's/.*href="//' | sed 's/".*//'|head -n1
+  register: liverootfs
+
+- name: Downloading RHCOS live-rootfs
+  get_url:
+    url: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/{{ liverootfs.stdout }}"
+    dest: "/var/www/html/downloads/{{ minorversion }}/rhcos/{{ liverootfs.stdout }}"
+
 - name: Fetching RHCOS bios file name
-  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep -E "metal|bios" | grep -iv uefi | sed 's/.*href="//' | sed 's/".*//'
+  shell: curl -s https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/{{ minorversion }}/{{ availableversion.stdout }}/ | grep -E "metal|bios" | grep -iv uefi | sed 's/.*href="//' | sed 's/".*//'|head -n1
   register: bios
 
 - name: Downloading RHCOS bios
