@@ -1,26 +1,22 @@
 # ocp4_kvm_ansible
-- This Ansible playbook will install OCP4 on a KVM environment.
+- This Ansible playbook will install OCP4 on a KVM environment. This is a fork of AmrGanz/ocp4_kvm_ansible with some tweaks specific to my needs. 
 
-# Lab Environment, I have tested the playbooks on:
-- Lenovo Thinkpad P70 Laptop
-  - Core I7 vPro 8th Gen
-  - 64 GB RAM
-- RHEL 7.7 "minimum installation" + ansible-2.9.6
+# Lab Hypervisor Environment I have tested the playbooks on:
+- HP DL360 Gen8
+  - Dual Intel 2660v2 cpus
+  - 192 GB Ram
+- Fedora 34 Server install + Ansible 2.9 (I have also tested this on CentOS and RHEL)
 
 # Tested OCP versions
-- OCP 4.2.12
-- OCP 4.2.18
-- OCP 4.3.0
-- OCP 4.3.13
-- OCP 4.4.3
-- OCP 4.4.5
-- OCP 4.4.23
-- OCP 4.5.9
+Starting in OpenShift 4.6 there was a change to the way the RHCOS os is provisioned, if you need to deploy an older version of OpenShift please use AmrGanz/ocp4_kvm_ansible as this ansible will not work.
+
+- OCP 4.6+
+- OCP 4.7+
 
 # What do you have to do beforehand:
 - The playbooks will try to download everything that you will need under projects directoy and "/var/www/html/downloads/"
-- Make sure you are using "root" user
-- make sure your system "bastion host" is subscribed or at least has a configured repositories to install the following packages [the playbook will try to install all prerequisites]:
+- Make sure you run the playbooks as the "root" user
+- make sure your lab hypervisor node is subscribed or at least has a configured repositories to install the following packages [the playbook will try to install all prerequisites]:
 ```
 - httpd
 - dnsmasq
@@ -32,7 +28,7 @@
 - libvirt-daemon-driver-network
 - virt-manager
 ```
-- And of cousre you will need to install Ansible on the bastion host :)
+- And of cousre you will need to install Ansible on the lab host :)
 
 # Variables to set before starting the playbook:
 
@@ -85,34 +81,38 @@ delete_downloads: false
 TASK [Listing available minor versions] ************************************************************************************************
 ok: [localhost] => {
     "minorversions.stdout_lines": [
-        "4.1", 
-        "4.2", 
-        "4.3", 
-        "4.4"
+        "4.1",
+        "4.2",
+        "4.3",
+        "4.4",
+        "4.5",
+        "4.6",
+        "4.7",
+        "4.8"
     ]
 }
 
-- After you select a Minor Version it will show all of the available micro versions to select from, for example and after selecting "4.3" from the previous output:
+- After you select a Minor Version it will show all of the available micro versions to select from, for example and after selecting "4.7" from the previous output:
 
-TASK [debug] ***************************************************************************************************************************
+TASK [Listing available Micro versions] ************************************************************************************************
 ok: [localhost] => {
     "microversions.stdout_lines": [
-        "4.3.0", 
-        "4.3.1", 
-        "4.3.2", 
-        "4.3.3", 
-        "4.3.5", 
-        "4.3.8", 
-        "4.3.9", 
-        "4.3.10", 
-        "4.3.11", 
-        "4.3.12", 
-        "4.3.13", 
-        "4.3.14", 
-        "4.3.15", 
-        "4.3.17"
+        "4.7.0",
+        "4.7.1",
+        "4.7.2",
+        "4.7.3",
+        "4.7.4",
+        "4.7.5",
+        "4.7.6",
+        "4.7.7",
+        "4.7.8",
+        "4.7.9",
+        "4.7.10",
+        "4.7.11"
     ]
 }
+
+
 
 ```
 
@@ -120,9 +120,9 @@ ok: [localhost] => {
 ```
 - Set the "copversion" variable while running the playbook
 
-# ansible-playbook start_point.yaml -e ocpversion=4.3.13
+# ansible-playbook start_point.yaml -e ocpversion=4.7.9
 
-- The playbook will proceed to donwload and install the required OCP version "4.3.13 in this example".
+- The playbook will proceed to donwload and install the required OCP version "4.7.9 in this example".
 ```
 
 - destroy.yaml [Destroy OCP4 cluster **without** deleting downloaded files]
@@ -142,7 +142,7 @@ ok: [localhost] => {
 ```
 - Download project files:
 ```
-[bastionhost]# git clone https://github.com/AmrGanz/ocp4_kvm_ansible.git
+[bastionhost]# git clone https://github.com/cswanson/ocp4_kvm_ansible.git
 ```
 - Switch to the directory:
 ```
@@ -229,15 +229,34 @@ worker-3.ocp4.mydomain.com   Ready    worker          42m   v1.14.6+c07e432da
 ~~~
 image-registry                                       False	 True          False	  16h
 ~~~
-- In [OCP 4.3](https://docs.openshift.com/container-platform/4.3/installing/installing_bare_metal/installing-bare-metal-network-customizations.html#registry-removed_installing-bare-metal-network-customizations), you must patch the "OpenShift Image Registry Operator" to be in "Managed":
-~~~
-# oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"managementState":"Managed"}}'
-~~~
-- Make sure to set the storage backend, at least to EmptyDir:
-~~~
-# oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage":{"emptyDir":{}}}}'
-~~~
 
 # Current Limitations:
 - I have tried the playbboks while using HDD disks and it showed a poor performance, I recommend using SSD to host VMs virtual disks.
 - If a task failed, I have to destroy the environment "destroy.yaml" and deploy it again.
+- After the environment is operational you may only see Master nodes and no workers when running an 'oc get nodes'. To resolve this you need to approve the pending CSRs for the worker nodes. 
+
+
+~~~
+$ oc get nodes
+NAME                         STATUS   ROLES           AGE   VERSION
+master-1.ocp4.lab.domain.com   Ready    master,worker   18m   v1.20.0+7d0a2b2
+master-2.ocp4.lab.domain.com   Ready    master,worker   18m   v1.20.0+7d0a2b2
+master-3.ocp4.lab.domain.com   Ready    master,worker   18m   v1.20.0+7d0a2b2
+$ oc get csr -oname | xargs oc adm certificate approve
+certificatesigningrequest.certificates.k8s.io/csr-2kbvc approved
+certificatesigningrequest.certificates.k8s.io/csr-54wxt approved
+certificatesigningrequest.certificates.k8s.io/csr-55zz9 approved
+certificatesigningrequest.certificates.k8s.io/csr-8gpwv approved
+certificatesigningrequest.certificates.k8s.io/csr-chdlg approved
+certificatesigningrequest.certificates.k8s.io/csr-f2zqf approved
+$ oc get nodes
+NAME                         STATUS     ROLES           AGE   VERSION
+master-1.ocp4.lab.domain.com   Ready      master,worker   18m   v1.20.0+7d0a2b2
+master-2.ocp4.lab.domain.com   Ready      master,worker   18m   v1.20.0+7d0a2b2
+master-3.ocp4.lab.domain.com   Ready      master,worker   18m   v1.20.0+7d0a2b2
+worker-1.ocp4.lab.domain.com   NotReady   worker          14s   v1.20.0+7d0a2b2
+worker-2.ocp4.lab.domain.com   NotReady   worker          15s   v1.20.0+7d0a2b2
+worker-3.ocp4.lab.domain.com   NotReady   worker          15s   v1.20.0+7d0a2b2
+~~~
+
+A few minutes after you approve the outstanding CSRs your workers will become ready.
