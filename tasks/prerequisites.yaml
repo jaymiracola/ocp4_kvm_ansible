@@ -29,7 +29,7 @@
     - libvirt
     - python3-libvirt
     - python3-lxml
-    - libguestfs-tools
+    - guestfs-tools
     - virt-install
     - libvirt-daemon-driver-network
     - virt-manager
